@@ -13,7 +13,7 @@ ebar,bbar,pbar,qbar,xbar,cbar = detSS.detSS_allocs()
 
 #Import fit function
 import nn_fit
-Σ, Y = nn_fit.fit_euler()
+Σ, Y = nn_fit.fit_euler(num_epochs=500,num_iters=1,tb=False)
 
 #Economy
 E = Y[:,equity]
