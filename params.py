@@ -96,7 +96,7 @@ input = 2*(L-2)+1
 output = 2*(L-1)+2
 
 OUT =       slice(0     ,output,1)
-equity =    slice(0     ,L-1   ,1)
-bond =      slice(L-1   ,2*L-2 ,1)
+cons =      slice(0     ,L-1   ,1)
+equity =    slice(L-1   ,2*L-2 ,1)
 price =     slice(2*L-2 ,2*L-1 ,1)
 ir =        slice(2*L-1 ,2*L ,1)

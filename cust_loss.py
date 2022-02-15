@@ -10,35 +10,34 @@ def euler_loss(y_true,y_pred):
     #ISSUE IS SIZE(T,) BECAUSE INPUT BATCH IS 32 OR WHATEVER TF 
     τ = tf.shape(y_pred).numpy()[0]
     #Today
+    C = y_pred[:,cons]
     E = y_pred[:,equity]
-    B = y_pred[:,bond]
     P = y_pred[:,price]
     Q = y_pred[:,ir]
-    x0 = tf.reshape(tf.concat([tf.reshape(Ω[time][0,0],(1,)),Ω[time][0,1:] + (P[0] + Δ[time][0])*ebar + bbar],axis=0),(1,L))
-    xrest = tf.concat([tf.reshape(Ω[time][1:,0],(τ-1,1)),Ω[time][1:,1:] + (P[1:] + Δ[time][1:])*E[0:-1] + B[0:-1]],axis=1)
-    X = tf.concat([x0,xrest],axis=0)
-    C = tf.concat([X[:,0:L-1]-P*E-Q*B,tf.reshape(X[:,-1],(τ,1))],axis=1)
 
+    #compute B and X
+    zeroE = tf.concat([tf.constant(0.,shape=(T,1)),E],1)
+    B = (Ω[:,:-1] + tf.concat([tf.reshape([*[0],*ebar[:-1]],(1,L-1)),zeroE[:-1,:-1]],0) - P*E - C)/Q
+    zeroB = tf.concat([tf.constant(0.,shape=(T,1)),B],1)
+    X = Ω + tf.concat([tf.reshape([*[0],*ebar],(1,L)),zeroE[:-1]],0) + tf.concat([tf.reshape([*[0],*bbar],(1,L)),zeroB[:-1]],0)
+    
     #Forecast
     Σf = tf.concat(
             [tf.concat([E[:,0:-1],B[:,0:-1],tf.constant(s*1.,shape=(τ,1))],axis=1) for s in range(S)]
             ,axis=0)
     yf = model(Σf,training=False)
     Yf = tf.stack([yf[s*τ:(s+1)*τ,:] for s in range(S)],axis=1)
+    Cf = Yf[:,:,cons]
     Ef = Yf[:,:,equity]
-    Bf = Yf[:,:,bond]
     Pf = Yf[:,:,price]
     Qf = Yf[:,:,ir]
-    xf0 = tf.reshape(tf.repeat([tf.reshape(ω[:,0],shape=(S,))],repeats=[τ],axis=0),(τ,S,1))
-    xfrest = ω[:,1:] + (Pf + δ)*Ef + Bf
-    Xf = tf.concat([xf0,xfrest],2)
-    Cf = tf.concat([Xf[:,:,0:L-1]-Pf*Ef-Qf*Bf,tf.reshape(Xf[:,:,-1],(τ,S,1))],axis=2)
     
-    Cpos = tf.greater(C,0)
-    Cfpos = tf.math.reduce_all(tf.greater(Cf,0),axis=1)
-    Cpen = tf.math.logical_and(Cpos,Cfpos)
-    negC = tf.math.minimum(tf.reduce_min(Cf,1),C)
-    #Cf = tf.math.maximum(Cf,ϵ)
+    #compute Bf and Xf
+    zeroEf = tf.concat([tf.constant(0.,shape=(T,S,1)),Ef],2)
+    Bf = (ω[:,:-1] + (Pf*δ)*tf.concat([tf.reshape(tf.convert_to_tensor([[*[*[0],*ebar[:-1]]],[*[*[0],*ebar[:-1]]]]),(1,S,L-1)),zeroEf[:-1,:,:-1]],0) - Cf)/Qf
+    zeroBf = tf.concat([tf.constant(0.,shape=(T,S,1)),Bf],2)
+    Xf = ω + tf.concat([tf.reshape(tf.convert_to_tensor([[*[*[0],*ebar]],[*[*[0],*ebar]]]),(1,S,L)),zeroEf[:-1,:]],0) + \
+        tf.concat([tf.reshape(tf.convert_to_tensor([[*[*[0],*bbar]],[*[*[0],*bbar]]]),(1,S,L)),zeroBf[:-1,:]],0)
 
     #Equity Expectation
     E_exp = tf.tensordot((Pf + δ)*up(Cf[:,:,1:L]),tf.convert_to_tensor(probs),axes=[[1],[0]])
@@ -47,11 +46,13 @@ def euler_loss(y_true,y_pred):
     B_exp = tf.tensordot(up(Cf[:,:,1:L]),tf.convert_to_tensor(probs),axes=[[1],[0]])
     
     #"Euler" penalty for oldest
-    Eul_old = tf.where(Cpen[:,-1],0.,10000000.-C[:,-1])
+    Xpen = tf.math.minimum(tf.math.reduce_min(Xf,1)[:,-1],X[:,-1],1)
+    Eul_old = tf.where(tf.math.logical_and(tf.reduce_all(Xf[:,:,-1]>0,1),X[:,-1]>0),0.,10000000.-Xpen)
 
     #Market clearing
-    E_mc_sum = tf.math.abs(equitysupply - tf.math.reduce_sum(E,axis=1))
-    B_mc_sum = tf.math.abs(bondsupply - tf.math.reduce_sum(B,axis=1))
+    MCpen = 10.
+    E_mc_sum = MCpen*tf.math.abs(equitysupply - tf.math.reduce_sum(E,axis=1))
+    B_mc_sum = MCpen*tf.math.abs(bondsupply - tf.math.reduce_sum(B,axis=1))
 
     #Loss = Euler for each agent
     # B_eul = tf.where(Cpen[:,:-1],tf.math.abs(upinv_tf(β*B_exp/Q)/C[:,:-1] -1),10000000.-negC[:,:-1])
@@ -61,5 +62,8 @@ def euler_loss(y_true,y_pred):
     # return E_eul_sum + B_eul_sum + E_mc_sum + B_mc_sum + Eul_old
 
     #Loss = Divide Eulers
-    Eul = tf.reduce_sum(tf.where(Cpen[:,:-1],tf.math.abs(P/Q - E_exp/B_exp),10000000.-negC[:,:-1]),axis=1)
-    return Eul + B_mc_sum + E_mc_sum + Eul_old
+    Eul = tf.reduce_sum(tf.math.abs(P/Q - E_exp/B_exp),axis=1)
+    Err = Eul + B_mc_sum + E_mc_sum + Eul_old
+    Err_mean_train = tf.constant(tf.reduce_mean(Err[time]),shape=(burn,))
+    Err_Ergodic = tf.concat([Err_mean_train,Err[time]],0)
+    return Err_Ergodic
