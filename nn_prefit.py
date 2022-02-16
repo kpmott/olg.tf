@@ -65,10 +65,17 @@ def prefit():
     C = tf.convert_to_tensor(C,dtype='float32')
     E = tf.convert_to_tensor(E,dtype='float32')
     P = tf.convert_to_tensor(P,dtype='float32')
+
+    #input: e,b,w
     Σ = tf.concat([E[:-1,:-1],E[:-1,:-1]*0,tf.reshape(tf.convert_to_tensor(rvec[:-1],'float32'),(T-1,1))],1)
-    y_train = tf.concat([E[1:],E[1:],tf.reshape(P[1:],(T-1,1)),tf.constant(1/β,shape=(T-1,1))],1)
+    
+    #output: c,e,b,p,q
+    y_train = tf.concat([C[1:],E[1:],E[1:],tf.reshape(P[1:],(T-1,1)),tf.constant(1/β,shape=(T-1,1))],1)
+    
+    #train: prefit to "ergodic" detSS whatever
     model.fit(Σ,y_train,batch_size=T-1,epochs=500,verbose=0,callbacks=[TqdmCallback()])
 
+    #fill values 
     for t in range(1):
         #t=0
         Σ = []

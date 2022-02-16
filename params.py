@@ -1,13 +1,14 @@
 from packages import *
-
 os.chdir("/home/kpmott/Git/tf.olg")
 
 #Lifespan 
 L = 3
+
+#working periods and retirement periods 
 wp = int(L*2/3)
 rp = L - wp
 
-#Time discount
+#Time discount rate
 β = 0.98**(60/L)
 
 #Risk-aversion coeff
@@ -21,7 +22,7 @@ S = len(probs)
 ωGuess = 7/8*norm.pdf(np.linspace(1,wp,wp),0.8*wp,L*0.45) \
        / sum(norm.pdf(np.linspace(1,wp,wp),0.8*wp,L*0.45))
 
-#share of total resources: 1/16 to dividend; the rest to endowment income
+#share of total resources: 1/8 to dividend; the rest to endowment income
 ls = np.array([*[1/8], *ωGuess, *np.zeros(rp)])
 
 #total resources
@@ -29,13 +30,9 @@ wbar = 1
 
 #shock perturbation vector
 ζtrue = 0.03
-wvec = [wbar - ζtrue, wbar + ζtrue]            #total income in each state
-δvec = np.multiply(ls[0],wvec)                    #dividend in each state
-ωvec = [ls[1:]*w for w in wvec]
-
-#plt.plot(ωvec[0])
-#plt.plot(ωvec[1])
-#plt.show()
+wvec = [wbar - ζtrue, wbar + ζtrue]     #total resources in each state
+δvec = np.multiply(ls[0],wvec)          #dividend in each state
+ωvec = [ls[1:]*w for w in wvec]         #endowment process
 
 #mean-center all shock-contingent values
 δ_scalar = ls[0]
@@ -58,46 +55,45 @@ def up(x):
     return x**-γ
 
 #inverse of utility derivative
-@tf.function
-def upinv(x):
-    a = 1e-16
-    if x <= a:
-        return -(x-a) + a**(-1/γ)
-    else:
-        return x**(-1/γ)
-
 def upinv_tf(x):
     return x**(1/γ)
-    #a = 1e-16
-    #return tf.where(tf.less_equal(x,a),-(x-a)+a**(-1/γ), x**(1/γ))
-
-
 
 #-----------------------------------------------------------------------------------------------------------------
 #time and such for neurals 
 T = 2000
-burn = int(T/10)
-train = T - burn
-time = slice(burn,T,1)
+burn = int(T/10)            #burn period: this is garbage
+train = T - burn            #how many periods are "counting?"
+time = slice(burn,T,1)      #period in which we care
 
+#shocks
 shocks = range(S)
 svec = np.random.choice(shocks,T,probs)
+
+#endowments and dividends and total resources
 Ωvec = [ωvec[s] for s in svec]
 Δvec = δvec[svec]
 rvec = np.sum(Ωvec,1)+Δvec
+
+#convert to tensors now for easier operations later
 Ω = tf.convert_to_tensor(Ωvec,dtype='float32')
 Δ = tf.reshape(tf.convert_to_tensor(Δvec,dtype='float32'),(T,1))
 ω = tf.convert_to_tensor(ωvec,dtype='float32')
 δ = tf.reshape(tf.convert_to_tensor(δvec,dtype='float32'),(S,1))
 
-#tolerance
+#machine tolerance
 ϵ = 1e-8
 #-----------------------------------------------------------------------------------------------------------------
+"""
+input   = [(e_i^{t-1})_{i=1}^{L-2},(b_i^{t-1})_{i=1}^{L-2},w^t]                         ∈ ℜ^{2L-3}
+output  = [(c_i^{t})_{i=1}^{L},(e_i^{t})_{i=1}^{L-1},(b_i^{t})_{i=1}^{L-1},p^t,q^t]   ∈ ℜ^{3L-1}
+"""
+#input/output dims
 input = 2*(L-2)+1
-output = 2*(L-1)+2
+output = L+2*(L-1)+2
 
-OUT =       slice(0     ,output,1)
-equity =      slice(0     ,L-1   ,1)
-bond =    slice(L-1   ,2*L-2 ,1)
-price =     slice(2*L-2 ,2*L-1 ,1)
-ir =        slice(2*L-1 ,2*L ,1)
+#slices to grab output 
+cons =      slice(0     ,L)
+equity =    slice(L   ,2*L-1   ,1)
+bond =      slice(2*L-1 ,3*L-2 ,1)
+price =     slice(3*L-2 ,3*L-1 ,1)
+ir =        slice(3*L-1 ,3*L ,1)
