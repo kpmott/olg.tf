@@ -84,6 +84,7 @@ shocks = range(S)
 svec = np.random.choice(shocks,T,probs)
 Ωvec = [ωvec[s] for s in svec]
 Δvec = δvec[svec]
+rvec = np.sum(Ωvec,1)+Δvec
 Ω = tf.convert_to_tensor(Ωvec,dtype='float32')
 Δ = tf.reshape(tf.convert_to_tensor(Δvec,dtype='float32'),(T,1))
 ω = tf.convert_to_tensor(ωvec,dtype='float32')
@@ -96,7 +97,7 @@ input = 2*(L-2)+1
 output = 2*(L-1)+2
 
 OUT =       slice(0     ,output,1)
-cons =      slice(0     ,L-1   ,1)
-equity =    slice(L-1   ,2*L-2 ,1)
+equity =      slice(0     ,L-1   ,1)
+bond =    slice(L-1   ,2*L-2 ,1)
 price =     slice(2*L-2 ,2*L-1 ,1)
 ir =        slice(2*L-1 ,2*L ,1)
