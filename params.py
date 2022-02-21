@@ -2,7 +2,7 @@ from packages import *
 os.chdir("/home/kpmott/Git/tf.olg")
 
 #Lifespan 
-L = 3
+L = 4
 
 #working periods and retirement periods 
 wp = int(L*2/3)

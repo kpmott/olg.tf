@@ -13,7 +13,7 @@ ebar,bbar,pbar,qbar,xbar,cbar = detSS.detSS_allocs()
 
 #Import fit function
 import nn_fit
-Σ, Y = nn_fit.fit_euler(num_epochs=500,num_iters=25,tb=False)
+Σ, Y = nn_fit.fit_euler(num_epochs=750,num_iters=2,tb=False) 
 
 #Economy
 E = Y[:,equity]
@@ -39,3 +39,24 @@ xf0 = tf.reshape(tf.repeat([tf.reshape(ω[:,0],shape=(S,))],repeats=[T],axis=0),
 xfrest = ω[:,1:] + (Pf + δ)*Ef + Bf
 Xf = tf.concat([xf0,xfrest],2)
 Cf = tf.concat([Xf[:,:,0:L-1]-Pf*Ef-Qf*Bf,tf.reshape(Xf[:,:,-1],(T,S,1))],axis=2)
+
+Elag = tf.concat([[[*[0],*ebar]],tf.concat([tf.zeros((T-1,1)),E[1:]],1)],0)
+Blag = tf.concat([[[*[0],*bbar]],tf.concat([tf.zeros((T-1,1)),B[1:]],1)],0)
+
+#error tracing
+#Market clearing
+E_mc_sum = tf.math.abs(equitysupply - tf.math.reduce_sum(E,axis=1))
+B_mc_sum = tf.math.abs(bondsupply - tf.math.reduce_sum(B,axis=1))
+
+#Budget constraints: c = ω + (p+δ)e^{-1} + b^{-1} - pe - qb
+E0 = tf.concat([E,tf.zeros((T,1))],axis=1)
+B0 = tf.concat([B,tf.zeros((T,1))],axis=1)
+bc = tf.reduce_sum(tf.math.abs(Ω + (P+Δ)*Elag + Blag - P*E0 - Q*B0 - C),1)
+
+#Loss = Divide Excess Returns
+Eul = tf.math.reduce_sum(tf.math.abs(β/up(C)*(tf.tensordot(up(Cf)*(Pf+δ),tf.convert_to_tensor(probs),axes=[[1],[0]])/P - tf.tensordot(up(Cf),tf.convert_to_tensor(probs),axes=[[1],[0]])/Q)),1)
+Err = Eul + B_mc_sum + E_mc_sum + bc
+
+#Remove noise from burn period
+Err_mean_train = tf.constant(tf.reduce_mean(Err[time]),shape=(burn,))
+Err_Ergodic = tf.concat([Err_mean_train,Err[time]],0)
