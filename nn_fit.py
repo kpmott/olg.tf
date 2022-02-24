@@ -8,8 +8,8 @@ from params import *
 from nn import *
 
 #Pre-fit neural network to get good starting point
-#import nn_prefit
-#nn_prefit.prefit()
+import nn_prefit
+nn_prefit.prefit()
 
 import detSS
 #load in detSS allocs
@@ -21,7 +21,7 @@ import cust_loss #; cust_loss.euler_loss(Y,Y)
 #new model -- recompile with custom loss
 model.compile(loss=cust_loss.euler_loss, optimizer='adam')
 
-def fit_euler(num_epochs=500,num_iters=10,tb=False):
+def fit_euler(num_epochs=500,num_iters=10,tb=False,batchsize=T):
     skip = False
     for thyme in tqdm(range(num_iters)):
         for t in range(1):
@@ -42,9 +42,9 @@ def fit_euler(num_epochs=500,num_iters=10,tb=False):
         if tb:
             log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
             tbc = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-            model.fit(tf.convert_to_tensor(Σ),tf.zeros((T,output)),batch_size=T,epochs=num_epochs,verbose=0,callbacks=[TqdmCallback(),tbc])
+            model.fit(tf.convert_to_tensor(Σ),tf.zeros((T,output)),batch_size=batchsize,epochs=num_epochs,verbose=0,callbacks=[TqdmCallback(),tbc])
         else:
-            model.fit(tf.convert_to_tensor(Σ),tf.zeros((T,output)),batch_size=T,epochs=num_epochs,verbose=0,callbacks=[TqdmCallback()])#,tbc])
+            model.fit(tf.convert_to_tensor(Σ),tf.zeros((T,output)),batch_size=batchsize,epochs=num_epochs,verbose=0,callbacks=[TqdmCallback()])#,tbc])
 
         skip = tf.math.reduce_mean(cust_loss.euler_loss(tf.zeros((T,output)),tf.convert_to_tensor(Y,dtype='float32'))) <= ϵ
         
