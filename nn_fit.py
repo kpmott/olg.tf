@@ -44,7 +44,7 @@ def fit_euler(num_epochs=500,num_iters=10,tb=False):
             tbc = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
             model.fit(tf.convert_to_tensor(Σ),tf.zeros((T,output)),batch_size=T,epochs=num_epochs,verbose=0,callbacks=[TqdmCallback(),tbc])
         else:
-            model.fit(tf.convert_to_tensor(Σ),tf.zeros((T,output)),batch_size=32,epochs=num_epochs,verbose=0,callbacks=[TqdmCallback()])#,tbc])
+            model.fit(tf.convert_to_tensor(Σ),tf.zeros((T,output)),batch_size=T,epochs=num_epochs,verbose=0,callbacks=[TqdmCallback()])#,tbc])
 
         skip = tf.math.reduce_mean(cust_loss.euler_loss(tf.zeros((T,output)),tf.convert_to_tensor(Y,dtype='float32'))) <= ϵ
         
