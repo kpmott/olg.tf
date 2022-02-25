@@ -32,9 +32,13 @@ def euler_loss(y_true,y_pred):
     bc_L = tf.math.abs(Ω[...,-1] + tf.squeeze(P+Δ)*Elag[...,-1] + Blag[...,-1] -C[...,-1])
     bc = bc_1 + tf.math.reduce_sum(bc_i,-1) + bc_L
 
-    #Loss = Divide Excess Returns
-    Eul = tf.math.reduce_sum(
-        tf.math.abs(
+    #Eulers
+    # Eul_eq = tf.math.abs(upinv_tf(β*tf.tensordot(up(Cf)*(Pf+tf.expand_dims(δ,-1)),tf.convert_to_tensor(probs),axes=[[0],[0]])/P)/C - 1. )
+    # Eul_b  = tf.math.abs(upinv_tf(β*tf.tensordot(up(Cf),tf.convert_to_tensor(probs),axes=[[0],[0]])/Q)/C - 1. )
+    # Eul = tf.reduce_sum(Eul_eq+Eul_b,-1)
+
+    #Excess Returns
+    Eul = tf.math.reduce_sum(tf.math.abs(
             β/up(C)*
             (tf.tensordot(up(Cf)*(Pf+tf.expand_dims(δ,-1)),tf.convert_to_tensor(probs),axes=[[0],[0]])/P 
             - tf.tensordot(up(Cf),tf.convert_to_tensor(probs),axes=[[0],[0]])/Q)
@@ -45,5 +49,5 @@ def euler_loss(y_true,y_pred):
     #Remove noise from burn period
     Err_mean_train = tf.constant(tf.reduce_mean(Err[time]),shape=(burn,))
     Err_Ergodic = tf.concat([Err_mean_train,Err[time]],0)
-    return Err_Ergodic
+    return tf.math.sqrt(Err_Ergodic)
 #do I need penalties for forecast, too? 

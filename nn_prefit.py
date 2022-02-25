@@ -12,6 +12,9 @@ ebar,bbar,pbar,qbar,xbar,cbar = detSS.detSS_allocs()
 #run pre-fit to detSS values 
 def prefit():
     #PART ZERO: c = cbar/xbar * x
+
+    λp = 0.25
+
     for t in range(1):
         X = []
         C = []
@@ -32,7 +35,8 @@ def prefit():
                 break   
             else:
                 counter += 1
-                p_old = p                             
+                print(t,"-",counter,": ",np.abs(p-p_old))
+                p_old = λp*p + (1-λp)*p_old
         
         X.append(x)
         C.append(c)
@@ -51,10 +55,11 @@ def prefit():
             if np.abs(p-p_old) < 1e-12:
                 e = (x[:-1]-c[:-1])/p
                 #print(counter)
+                print(t,"-",counter,": ",np.abs(p-p_old))
                 break   
             else:
                 counter += 1
-                p_old = p                             
+                p_old = λp*p + (1-λp)*p_old
         
         X.append(x)
         C.append(c)
@@ -70,7 +75,7 @@ def prefit():
     Σ = tf.concat([E[:-1,:-1],E[:-1,:-1]*0,tf.reshape(tf.convert_to_tensor(rvec[:-1],'float32'),(T-1,1))],1)
     
     #output: c,e,b,p,q
-    y_train = tf.concat([C[1:],E[1:],E[1:],tf.reshape(P[1:],(T-1,1)),tf.constant(1/β,shape=(T-1,1))],1)
+    y_train = tf.concat([C[1:],E[1:],E[1:]*0,tf.reshape(P[1:],(T-1,1)),tf.constant(1/β,shape=(T-1,1))],1)
     
     #train: prefit to "ergodic" detSS whatever
     model.fit(Σ,y_train,batch_size=T-1,epochs=500,verbose=0,callbacks=[TqdmCallback()])

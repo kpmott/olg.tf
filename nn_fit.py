@@ -8,8 +8,8 @@ from params import *
 from nn import *
 
 #Pre-fit neural network to get good starting point
-import nn_prefit
-nn_prefit.prefit()
+#import nn_prefit
+#nn_prefit.prefit()
 
 import detSS
 #load in detSS allocs

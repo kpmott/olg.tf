@@ -13,9 +13,26 @@ ebar,bbar,pbar,qbar,xbar,cbar = detSS.detSS_allocs()
 
 #Import fit function
 import nn_fit
-Σ, Y = nn_fit.fit_euler(num_epochs=750,num_iters=250,tb=False,batchsize=T) 
+Σ, Y = nn_fit.fit_euler(num_epochs=1,num_iters=150,tb=False,batchsize=T) 
 
 
+
+for t in range(1):
+    #t=0
+    Σ = []
+    Y = []
+    Σ.append([*ebar[0:-1],*bbar[0:-1],*[rvec[t]]])
+    Y.append(model(tf.convert_to_tensor([Σ[t]]),training=False).numpy()[0])
+    e = Y[t][equity]
+    b = Y[t][bond]
+
+for t in tqdm(range(1,T)):
+    Σ.append([*e[:-1],*b[:-1],*[rvec[t]]])
+    Y.append(model(tf.convert_to_tensor([Σ[t]]),training=False).numpy()[0])
+    e = Y[t][equity]
+    b = Y[t][bond]
+
+Y = tf.convert_to_tensor(Y)
 
 #Economy
 C = Y[...,cons]
@@ -51,3 +68,10 @@ Eul = tf.math.reduce_sum(
         )
         ,1)
 Err = Eul + B_mc_sum + E_mc_sum + bc
+Err_mean_train = tf.constant(tf.reduce_mean(Err[time]),shape=(burn,))
+Err_Ergodic = tf.concat([Err_mean_train,Err[time]],0)
+
+E_mc_sum
+B_mc_sum
+bc
+Eul
