@@ -13,7 +13,7 @@ ebar,bbar,pbar,qbar,xbar,cbar = detSS.detSS_allocs()
 def prefit():
     #PART ZERO: c = cbar/xbar * x
 
-    λp = 0.25
+    λp = 0.95
 
     for t in range(1):
         X = []
@@ -35,7 +35,7 @@ def prefit():
                 break   
             else:
                 counter += 1
-                print(t,"-",counter,": ",np.abs(p-p_old))
+                #print(t,"-",counter,": ",np.abs(p-p_old))
                 p_old = λp*p + (1-λp)*p_old
         
         X.append(x)
@@ -55,7 +55,7 @@ def prefit():
             if np.abs(p-p_old) < 1e-12:
                 e = (x[:-1]-c[:-1])/p
                 #print(counter)
-                print(t,"-",counter,": ",np.abs(p-p_old))
+                #print(t,"-",counter,": ",np.abs(p-p_old))
                 break   
             else:
                 counter += 1
@@ -72,31 +72,20 @@ def prefit():
     P = tf.convert_to_tensor(P,dtype='float32')
 
     #input: e,b,w
-    Σ = tf.concat([E[:-1,:-1],E[:-1,:-1]*0,tf.reshape(tf.convert_to_tensor(rvec[:-1],'float32'),(T-1,1))],1)
-    
+    Σ = tf.reshape(tf.convert_to_tensor(rvec[:-1],'float32'),(T-1,1))
+
     #output: c,e,b,p,q
     y_train = tf.concat([C[1:],E[1:],E[1:]*0,tf.reshape(P[1:],(T-1,1)),tf.constant(1/β,shape=(T-1,1))],1)
     
+    Σ       = tf.expand_dims(tf.concat([Σ,[Σ[-1]]],0),0)
+    y_train = tf.expand_dims(tf.concat([y_train,[y_train[-1]]],0),0)
+    
     #train: prefit to "ergodic" detSS whatever
-    model.fit(Σ,y_train,batch_size=T-1,epochs=500,verbose=0,callbacks=[TqdmCallback()])
+    model.fit(Σ,y_train,batch_size=T,epochs=500,verbose=0,callbacks=[TqdmCallback()])
 
     #fill values 
-    for t in range(1):
-        #t=0
-        Σ = []
-        Y = []
-        Σ.append([*ebar[0:-1],*bbar[0:-1],*[rvec[t]]])
-        Y.append(model(tf.convert_to_tensor([Σ[t]]),training=False).numpy()[0])
-        e = Y[t][equity]
-        b = Y[t][bond]
 
-    for t in tqdm(range(1,T)):
-        Σ.append([*e[:-1],*b[:-1],*[rvec[t]]])
-        Y.append(model(tf.convert_to_tensor([Σ[t]]),training=False).numpy()[0])
-        e = Y[t][equity]
-        b = Y[t][bond]
-
-    Σ = tf.convert_to_tensor(Σ,'float32')
-    Y = tf.convert_to_tensor(Y,'float32')
+    Σ = tf.reshape(tf.convert_to_tensor(rvec,'float32'),(1,T,1))
+    Y = model(Σ,training=False)
     
     return Σ,Y

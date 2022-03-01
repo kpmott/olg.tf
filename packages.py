@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import Dense, SimpleRNN, LSTM, Input, Reshape
 tf.config.run_functions_eagerly(True)
 
 from functools import reduce  # Required in Python 3

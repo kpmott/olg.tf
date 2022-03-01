@@ -75,25 +75,35 @@ svec = np.random.choice(shocks,T,probs)
 rvec = np.sum(Ωvec,1)+Δvec
 
 #convert to tensors now for easier operations later
-Ω = tf.convert_to_tensor(Ωvec,dtype='float32')
-Δ = tf.reshape(tf.convert_to_tensor(Δvec,dtype='float32'),(T,1))
-ω = tf.convert_to_tensor(ωvec,dtype='float32')
+#Ω = tf.convert_to_tensor(Ωvec,dtype='float32')
+#Δ = tf.reshape(tf.convert_to_tensor(Δvec,dtype='float32'),(T,1))
+#ω = tf.convert_to_tensor(ωvec,dtype='float32')
 δ = tf.reshape(tf.convert_to_tensor(δvec,dtype='float32'),(S,1))
 
 #machine tolerance
 ϵ = 1e-8
 #-----------------------------------------------------------------------------------------------------------------
 """
-input   = [(e_i^{t-1})_{i=1}^{L-2},(b_i^{t-1})_{i=1}^{L-2},w^t]                         ∈ ℜ^{2L-3}
-output  = [(c_i^{t})_{i=1}^{L},(e_i^{t})_{i=1}^{L-1},(b_i^{t})_{i=1}^{L-1},p^t,q^t]   ∈ ℜ^{3L-1}
+#[(e_i^{t-1})_{i=1}^{L-2},(b_i^{t-1})_{i=1}^{L-2},w^t]                         ∈ ℜ^{2L-3}
+
+
+input   = [w^t] ∈ ℜ_{++} 
+
+
+output   = [(e_i^{t})_{i=1}^{L-1},(b_i^{t})_{i=1}^{L-1},p^t,q^t] ∈ ℜ^{2*(L-1)+2}
+outputF =  [(c_{i+1}^{t+1},p^{t+1})_{s=1}^S] ∈ 
 """
 #input/output dims
-input = 2*(L-2)+1
-output = L+2*(L-1)+2
+input = 1
+output = 2*(L-1)+2
+outputF = L-1 + 1
 
 #slices to grab output 
-cons =      slice(0     ,L)
-equity =    slice(L   ,2*L-1   ,1)
-bond =      slice(2*L-1 ,3*L-2 ,1)
-price =     slice(3*L-2 ,3*L-1 ,1)
-ir =        slice(3*L-1 ,3*L ,1)
+equity =    slice(0   ,L-1   ,1)
+bond =      slice(L-1 ,2*L-2 ,1)
+price =     slice(2*L-2 ,2*L-1 ,1)
+ir =        slice(2*L-1 ,2*L ,1)
+
+#slices forecast
+consF = slice(0,L-1,1)
+priceF = slice(L-1,L,1)

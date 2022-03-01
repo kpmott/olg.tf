@@ -19,51 +19,21 @@ ebar,bbar,pbar,qbar,xbar,cbar = detSS.detSS_allocs()
 import cust_loss #; cust_loss.euler_loss(Y,Y)
 
 #new model -- recompile with custom loss
-model.compile(loss=cust_loss.euler_loss, optimizer='adam')
+model.compile(loss=None, optimizer='adam')
 
-def fit_euler(num_epochs=500,num_iters=10,tb=False,batchsize=T):
+def fit_euler(num_epochs=5,tb=False,batchsize=1):
     skip = False
-    for thyme in tqdm(range(num_iters)):
-        for t in range(1):
-        #t=0
-            Σ = []
-            Y = []
-            Σ.append([*ebar[0:-1],*bbar[0:-1],*[rvec[t]]])
-            Y.append(model(tf.convert_to_tensor([Σ[t]]),training=False).numpy()[0])
-            e = Y[t][equity]
-            b = Y[t][bond]
+    Σ = tf.expand_dims(tf.convert_to_tensor([rvec],'float32'),-1)
+    model.add_loss(lambda: cust_loss.euler_loss(model(Σ,training=False),model(Σ,training=False)))
+    if tb:
+        log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        tbc = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+        model.fit(Σ,[tf.zeros((batchsize,T,output)),tf.zeros((batchsize,T,S,outputF)),tf.zeros((batchsize,T,1))],batch_size=batchsize,epochs=num_epochs,verbose=0,callbacks=[TqdmCallback(),tbc])
+    else:
+        model.fit(Σ,[tf.zeros((batchsize,T,output)),tf.zeros((batchsize,T,S,outputF)),tf.zeros((batchsize,T,1))],batch_size=batchsize,epochs=num_epochs,verbose=0,callbacks=[TqdmCallback()])#,tbc])
 
-        for t in tqdm(range(1,T)):
-            Σ.append([*e[:-1],*b[:-1],*[rvec[t]]])
-            Y.append(model(tf.convert_to_tensor([Σ[t]]),training=False).numpy()[0])
-            e = Y[t][equity]
-            b = Y[t][bond]
-
-        if tb:
-            log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-            tbc = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-            model.fit(tf.convert_to_tensor(Σ),tf.zeros((T,output)),batch_size=batchsize,epochs=num_epochs,verbose=0,callbacks=[TqdmCallback(),tbc])
-        else:
-            model.fit(tf.convert_to_tensor(Σ),tf.zeros((T,output)),batch_size=batchsize,epochs=num_epochs,verbose=0,callbacks=[TqdmCallback()])#,tbc])
-
-        skip = tf.math.reduce_mean(cust_loss.euler_loss(tf.zeros((T,output)),tf.convert_to_tensor(Y,dtype='float32'))) <= ϵ
-        
-        if skip.numpy():
-            break
-        
-    for t in range(1):
-        #t=0
-        Σ = []
-        Y = []
-        Σ.append([*ebar[0:-1],*bbar[0:-1],*[rvec[t]]])
-        Y.append(model(tf.convert_to_tensor([Σ[t]]),training=False).numpy()[0])
-        e = Y[t][equity]
-        b = Y[t][bond]
-
-    for t in tqdm(range(1,T)):
-        Σ.append([*e[:-1],*b[:-1],*[rvec[t]]])
-        Y.append(model(tf.convert_to_tensor([Σ[t]]),training=False).numpy()[0])
-        e = Y[t][equity]
-        b = Y[t][bond]
+    Y = model(Σ, training = False)
     
-    return tf.convert_to_tensor(Σ,'float32'), tf.convert_to_tensor(Y,'float32')
+    return Σ,Y
+
+Σ,Y = fit_euler(250,True,1)
