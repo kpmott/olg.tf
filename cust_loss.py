@@ -51,6 +51,7 @@ def euler_loss(y_true,y_pred):
     C = tf.maximum(ϵc,Chat)
 
     #Forecast
+    Σf = tf.expand_dims(tf.convert_to_tensor([rvec],'float32'),-1)
     Yf = y_pred[1]
     Cf = Yf[...,consF]
     Pf = Yf[...,priceF]
@@ -61,6 +62,19 @@ def euler_loss(y_true,y_pred):
 
     #Cons penalty
     conspen = tf.math.reduce_sum(1/ϵc*tf.math.abs(tf.minimum(0.,Chat)),-1)
+
+    #Forecast penalties
+    lkups = [[t,svec[t]] for t in range(T)]
+    Cfhat = tf.expand_dims(tf.gather_nd(indices=lkups,params=tf.squeeze(Cf)),0)
+    Cferr = tf.abs(C[:,1:,:-1] - Cfhat[:,:-1])
+    Cferr = tf.pad(Cferr,[[0,0],[0,1],[0,0]])
+
+    Pfhat = tf.expand_dims(tf.expand_dims(tf.gather_nd(indices=lkups,params=tf.squeeze(Pf)),0),-1)
+    Pferr = tf.abs(P[:,1:,:] - Pfhat[:,:-1])
+    Pferr = tf.pad(Pferr,[[0,0],[0,1],[0,0]])
+
+    forecastErr = tf.reduce_sum(Cferr + Pferr, -1)
+
 
     #Eulers
     # Eul_eq = tf.math.abs(upinv_tf(β*tf.tensordot(up(Cf)*(Pf+tf.expand_dims(δ,-1)),tf.convert_to_tensor(probs),axes=[[0],[0]])/P)/C - 1. )
@@ -76,7 +90,7 @@ def euler_loss(y_true,y_pred):
             - tf.tensordot(up(Cf),tf.convert_to_tensor(probs),axes=[[2],[0]])/Q)
             )
             ,-1)
-    Err = Eul + B_mc_sum + E_mc_sum + conspen
+    Err = Eul + B_mc_sum + E_mc_sum + conspen + forecastErr
     return Err
 
     #Remove noise from burn period
