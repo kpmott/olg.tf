@@ -10,7 +10,8 @@ def activation_final(tensorOut):
 
 inp = Input(shape = (T,input), name="input")
 x = LSTM(units = 128, return_sequences=True, name="hidden1")(inp)
-x = LSTM(units = 64, return_sequences=True, name="hidden2")(x)
+x = LSTM(units = 128, return_sequences=True, name="hidden2")(x)
+x = LSTM(units = 128, return_sequences=True, name="hidden3")(x)
 out = Dense(units = output, activation = activation_final, name="ThisPeriod")(x)
 forecast = Dense(units = outputF*S, activation='softplus')(x)
 outF = Reshape((T,S,outputF), name="Forecast")(forecast)

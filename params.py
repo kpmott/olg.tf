@@ -2,14 +2,14 @@ from packages import *
 os.chdir("/home/kpmott/Git/tf.olg")
 
 #Lifespan 
-L = 4
+L = 3
 
 #working periods and retirement periods 
 wp = int(L*2/3)
 rp = L - wp
 
 #Time discount rate
-β = 0.98**(60/L)
+β = 1. # 0.98**(60/L)
 
 #Risk-aversion coeff
 γ = 2.
@@ -61,7 +61,7 @@ def upinv_tf(x):
 #-----------------------------------------------------------------------------------------------------------------
 #time and such for neurals 
 T = 2000
-burn = int(T/10)            #burn period: this is garbage
+burn = int(T/40)            #burn period: this is garbage
 train = T - burn            #how many periods are "counting?"
 time = slice(burn,T,1)      #period in which we care
 

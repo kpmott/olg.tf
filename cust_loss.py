@@ -67,11 +67,13 @@ def euler_loss(y_true,y_pred):
     lkups = [[t,svec[t]] for t in range(T)]
     Cfhat = tf.expand_dims(tf.gather_nd(indices=lkups,params=tf.squeeze(Cf)),0)
     Cferr = tf.abs(C[:,1:,:-1] - Cfhat[:,:-1])
-    Cferr = tf.pad(Cferr,[[0,0],[0,1],[0,0]])
+    #Cferr = 1. - tf.square(C[:,1:,:-1] - Cfhat[:,:-1])/tf.square(C[:,1:,:-1] - tf.reduce_mean(C[:,1:,:-1]))
+    Cferr = tf.pad(Cferr,[[0,0],[0,1],[0,0]],constant_values=0.)
 
     Pfhat = tf.expand_dims(tf.expand_dims(tf.gather_nd(indices=lkups,params=tf.squeeze(Pf)),0),-1)
     Pferr = tf.abs(P[:,1:,:] - Pfhat[:,:-1])
-    Pferr = tf.pad(Pferr,[[0,0],[0,1],[0,0]])
+    #Pferr = 1. - tf.square(P[:,1:] - Pfhat[:,:-1])/tf.square(P[:,1:] - tf.reduce_mean(P[:,1:]))
+    Pferr = tf.pad(Pferr,[[0,0],[0,1],[0,0]],constant_values=0.)
 
     forecastErr = tf.reduce_sum(Cferr + Pferr, -1)
 
@@ -91,10 +93,9 @@ def euler_loss(y_true,y_pred):
             )
             ,-1)
     Err = Eul + B_mc_sum + E_mc_sum + conspen + forecastErr
-    return Err
+    #return Err
 
     #Remove noise from burn period
-    #Err_mean_train = tf.constant(tf.reduce_mean(Err[time]),shape=(burn,))
-    #Err_Ergodic = tf.concat([Err_mean_train,Err[time]],0)
-    #return tf.math.sqrt(Err_Ergodic)
-#do I need penalties for forecast, too? 
+    Err_mean_train = tf.constant(tf.reduce_mean(Err[...,time]),shape=(1,burn,))
+    Err_Ergodic = tf.concat([Err_mean_train,Err[...,time]],1)
+    return Err_Ergodic
