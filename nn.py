@@ -13,7 +13,7 @@ def activation_final(tensorOut):
 
 inp = Input(shape=(input,))
 x = Dense(units = 512,name='Hidden1',activation='relu')(inp[...,:-1]) #,kernel_initializer=initializers.Zeros(),bias_initializer=initializers.Zeros()
-#x = Dense(units = 512,name='Hidden2',activation='relu')(x)
+x = Dense(units = 512,name='Hidden2',activation='relu')(x)
 x = Dense(units = 256 ,name='Hidden3',activation='relu')(x)
 outp = Dense(units = output-1, activation=activation_final,name='AssetsPrices')(x)
 outpt = tf.concat([outp,tf.expand_dims(inp[...,-1],-1)],-1)
